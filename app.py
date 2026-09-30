@@ -1,116 +1,18 @@
-from flask import Flask, request, render_template_string, redirect, session
+from flask import Flask, request, render_template, render_template_string, redirect, session
+import os
 
 app = Flask(__name__)
-app.secret_key = "enterprise-training-lab-key"
 
-# Lab credentials - server side only
-VALID_USERNAME = "employee"
-VALID_PASSWORD = "Enterprise@7392"
+# Session secret
+app.secret_key = os.environ.get(
+    "SECRET_KEY",
+    "enterprise-training-lab-key"
+)
 
-LOGIN_PAGE = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Enterprise Portal</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #101827, #1d3557);
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .login-box {
-            width: 380px;
-            padding: 40px;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.35);
-        }
-
-        h1 {
-            text-align: center;
-            color: #172033;
-        }
-
-        .subtitle {
-            text-align: center;
-            color: #777;
-            margin-bottom: 30px;
-        }
-
-        input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 13px;
-            margin: 8px 0 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-
-        button {
-            width: 100%;
-            padding: 13px;
-            border: none;
-            border-radius: 8px;
-            background: #1769aa;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #0d527f;
-        }
-
-        .error {
-            color: #c62828;
-            text-align: center;
-            margin-top: 15px;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 25px;
-            font-size: 12px;
-            color: #888;
-        }
-    </style>
-</head>
-
-<body>
-
-<div class="login-box">
-
-    <h1>Enterprise Portal</h1>
-    <div class="subtitle">Employee Authentication</div>
-
-    <form method="POST">
-        <input type="text" name="username"
-               placeholder="Username" required>
-
-        <input type="password" name="password"
-               placeholder="Password" required>
-
-        <button type="submit">Sign In</button>
-    </form>
-
-    {% if error %}
-        <div class="error">{{ error }}</div>
-    {% endif %}
-
-    <div class="footer">
-        Authorized Training Environment
-    </div>
-
-</div>
-
-</body>
-</html>
-"""
+# Training-lab credentials
+# Later, Render par inhe Environment Variables me move kar sakte ho.
+VALID_USERNAME = os.environ.get("LAB_USERNAME", "employee")
+VALID_PASSWORD = os.environ.get("LAB_PASSWORD", "Enterprise@7392")
 
 
 DASHBOARD = """
@@ -118,7 +20,12 @@ DASHBOARD = """
 <html>
 <head>
     <title>Enterprise Dashboard</title>
+
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -131,23 +38,54 @@ DASHBOARD = """
             padding: 20px 40px;
             display: flex;
             justify-content: space-between;
+            align-items: center;
         }
 
-        .container {
-            padding: 40px;
-        }
-
-        .card {
-            background: white;
-            padding: 25px;
-            margin-bottom: 20px;
-            border-radius: 12px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        .header strong {
+            font-size: 20px;
         }
 
         .logout {
             color: white;
             text-decoration: none;
+            background: #c62828;
+            padding: 9px 16px;
+            border-radius: 7px;
+        }
+
+        .container {
+            padding: 40px;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .welcome {
+            background: #1769aa;
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .services {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        .card h3 {
+            color: #172033;
+        }
+
+        .card p {
+            color: #666;
         }
     </style>
 </head>
@@ -161,17 +99,35 @@ DASHBOARD = """
 
 <div class="container">
 
-    <div class="card">
+    <div class="welcome">
         <h2>Welcome, Employee</h2>
-        <p>You have successfully authenticated to the training portal.</p>
+        <p>
+            You have successfully authenticated to the training portal.
+        </p>
     </div>
 
-    <div class="card">
-        <h3>Employee Services</h3>
-        <p>Employee Records</p>
-        <p>Documents</p>
-        <p>Company Resources</p>
-        <p>Account Settings</p>
+    <div class="services">
+
+        <div class="card">
+            <h3>Employee Records</h3>
+            <p>View employee information and records.</p>
+        </div>
+
+        <div class="card">
+            <h3>Documents</h3>
+            <p>Access company documents and resources.</p>
+        </div>
+
+        <div class="card">
+            <h3>Company Resources</h3>
+            <p>Access internal training resources.</p>
+        </div>
+
+        <div class="card">
+            <h3>Account Settings</h3>
+            <p>Manage account-related settings.</p>
+        </div>
+
     </div>
 
 </div>
@@ -188,8 +144,8 @@ def login():
 
     if request.method == "POST":
 
-        username = request.form.get("username")
-        password = request.form.get("password")
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
 
         if username == VALID_USERNAME and password == VALID_PASSWORD:
 
@@ -200,8 +156,8 @@ def login():
 
         error = "Invalid username or password"
 
-    return render_template_string(
-        LOGIN_PAGE,
+    return render_template(
+        "login.html",
         error=error
     )
 
@@ -224,13 +180,17 @@ def logout():
 
 
 if __name__ == "__main__":
+
+    port = int(os.environ.get("PORT", 8000))
+
     print("\n======================================")
     print(" Enterprise Training Lab")
-    print(" Running on http://127.0.0.1:8000")
+    print("======================================")
+    print(f" Running on port: {port}")
     print("======================================\n")
 
     app.run(
-        host="127.0.0.1",
-        port=8000,
+        host="0.0.0.0",
+        port=port,
         debug=False
     )
